@@ -1,14 +1,17 @@
-import json
-import requests
-from scapy.all import *
-import sys
+# Import necessary libraries
+import json                 # For handling JSON data, not used in this script.
+from scapy.all import *     # Import everything from Scapy for packet processing.
+import sys                  # Access system-specific parameters and functions.
 
-# Function to handle each packet
-def handle_packet(packet, log):
-    packet_info = {}
+# Define a function to handle each packet captured.
+def handle_packet(packet, log):     # This function takes a packet and a log file object as input.
+    packet_info = {}        # Initialize an empty dictionary to hold packet information.
+    
+    # Check if the packet contains a TCP layer.
     if packet.haslayer(TCP):
-        tcp_layer = packet.getlayer(TCP)
+        tcp_layer = packet.getlayer(TCP)        # Extract the TCP layer from the packet.
         if tcp_layer:
+            # Initialize packet_info with TCP details.
             packet_info = {
                 "protocol": "TCP",
                 "src_ip": "",
@@ -17,19 +20,18 @@ def handle_packet(packet, log):
                 "dst_port": tcp_layer.dport
             }
             
-            # Safely access IP layer assuming TCP layer exists
+            # Safely attempt to extract IP layer details.
             ip_layer = packet.getlayer(IP)
             if ip_layer:
                 packet_info["src_ip"] = ip_layer.src
                 packet_info["dst_ip"] = ip_layer.dst
                 
-                # Process for HTTP and HTTPS traffic
+                # Process HTTP, HTTPS, FTP-data, FTP, SSH-SCP, Telnet, SMTP, POP3, NetBIOS-ns, NetBIOS-ssn, IMAP4, SMTPS, MySQL, PostgreSQL and HTTP Proxy traffic specifically.
                 if tcp_layer.dport == 80:
                     packet_info["protocol"] += " (HTTP)"
                     if packet.haslayer(Raw):
                         payload = packet[Raw].load.decode(errors='ignore')
                         if "HTTP" in payload:
-                            packet_info["http_request"] = payload
                             packet_info["payload"] = payload  # Capture the payload for HTTP
                             output = (
                                 f'protocol: {packet_info.get("protocol", "")}\n'
@@ -208,6 +210,7 @@ def handle_packet(packet, log):
                 log.write("Packet does not contain an IP layer.\n\n")
                 return  # Exit early if no relevant data can be extracted
 
+    # Similar processing for UDP packets
     elif packet.haslayer(UDP):
         udp_layer = packet.getlayer(UDP)
         if udp_layer:
@@ -225,7 +228,7 @@ def handle_packet(packet, log):
                 packet_info["src_ip"] = ip_layer.src
                 packet_info["dst_ip"] = ip_layer.dst
                 
-                # Example: Check for DNS queries (port 53 is commonly used for DNS)
+                # Process DNS, DHCP, TFTP, SNMP, NTP, Syslog, Portmapper/RPC, NetBIOS, mDNS, and general cases.
                 if udp_layer.dport == 53:
                     dns_query = ""
                     if packet.haslayer(DNS):
@@ -412,7 +415,8 @@ def handle_packet(packet, log):
         else:
             log.write("Packet does not contain a UDP layer.\n\n")
             return
-       
+     
+    # Process ICMP packets.
     elif packet.haslayer(ICMP):
         icmp_layer = packet.getlayer(ICMP)
         if icmp_layer:
@@ -432,7 +436,7 @@ def handle_packet(packet, log):
             )
             log.write(output)   
 
-# Main function to start packet sniffing
+# Define the main function to start packet sniffing.
 def main(interface, filter=None, verbose=False):
     logfile_name = f"sniffer_{interface}_log.txt"
     with open(logfile_name, 'w') as logfile:
@@ -446,7 +450,7 @@ def main(interface, filter=None, verbose=False):
         except KeyboardInterrupt:
             sys.exit(0)
 
-# Check if the script is being run directly
+# Execute the main function if the script is run directly.
 if __name__ == "__main__":
     # Usage: python sniffer.py <interface> [filter] [verbose]
     
